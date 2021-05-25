@@ -36,6 +36,7 @@ func main() {
 	println("Trying to create schemas...")
 	models.CreateUserSchema()
 	models.CreateResourceSchema()
+	models.CreateSubscriptionSchema()
 	println("Just created the schemas.")
 
 	// Middleware
@@ -45,6 +46,7 @@ func main() {
 	// Routes
 	routes.UserRoutes(app)
 	routes.ResourceRoutes(app)
+	routes.SubscriptionRoutes(app)
 
 	app.Get("/", func(c *fiber.Ctx) error {
 		return c.SendString("Hello, World 👋!")
