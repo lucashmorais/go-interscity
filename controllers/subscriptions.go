@@ -33,7 +33,19 @@ func GetSubscription(c *fiber.Ctx) error {
 }
 
 func GetSubscriptionByResourceUUID(c *fiber.Ctx) error {
-	return c.SendString("Endpoint is working: " + c.OriginalURL())
+	uuidParam := c.Query("uuid")
+
+	filer := bson.D{{Key: "subscription.uuid", Value: uuidParam}}
+	subscriptionRecord := models.SubscriptionCollection.FindOne(c.Context(), filer)
+	if subscriptionRecord.Err() != nil {
+		return c.Status(400).JSON(fiber.Map{"success": false, "data": "No subscription was found whose resource had uuid: " + uuidParam})
+	}
+
+	subscription := &models.Subscription{}
+	subscriptionRecord.Decode(subscription)
+
+	return c.JSON(fiber.Map{"success": true, "data": subscription})
+	// return c.SendString("Endpoint is working: " + c.OriginalURL())
 }
 
 func CreateSubscription(c *fiber.Ctx) error {
