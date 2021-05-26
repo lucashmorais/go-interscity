@@ -9,7 +9,7 @@ func SubscriptionRoutes(app *fiber.App) {
 	components := app.Group("/subscriptions")
 
 	components.Post("/", controllers.CreateSubscription)
-	components.Put("/", controllers.UpdateSubscription)
+	components.Put("/:id", controllers.UpdateSubscription)
 
 	components.Get("/:id", controllers.GetSubscription)
 	components.Get("/", controllers.GetSubscriptionByResourceUUID)

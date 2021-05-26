@@ -1,6 +1,8 @@
 package controllers
 
 import (
+	"reflect"
+
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
 	"github.com/lucashmorais/go-interscity/models"
@@ -45,7 +47,6 @@ func GetSubscriptionByResourceUUID(c *fiber.Ctx) error {
 	subscriptionRecord.Decode(subscription)
 
 	return c.JSON(fiber.Map{"success": true, "data": subscription})
-	// return c.SendString("Endpoint is working: " + c.OriginalURL())
 }
 
 func CreateSubscription(c *fiber.Ctx) error {
@@ -75,8 +76,48 @@ func CreateSubscription(c *fiber.Ctx) error {
 	return c.JSON(fiber.Map{"id": insertionResult.InsertedID, "success": true, "data": createdSubscription})
 }
 
+func coreMergeStructs(source reflect.Value, target reflect.Value) {
+	for i := 0; i < source.NumField(); i++ {
+		target.FieldByName(source.Type().Field(i).Name).Set(source.Field(i))
+	}
+}
+
 func UpdateSubscription(c *fiber.Ctx) error {
-	return c.SendString("Endpoint is working: " + c.OriginalURL())
+	idParam := c.Params("id")
+	subscriptionID, err := primitive.ObjectIDFromHex(idParam)
+	if err != nil {
+		return c.Status(400).JSON(fiber.Map{"success": false, "data": idParam + " is not a valid id!"})
+	}
+
+	// subscription := new(models.Subscription)
+	var subscription models.Subscription
+	if err := c.BodyParser(&subscription); err != nil {
+		return c.Status(400).JSON(fiber.Map{"success": false, "data": err})
+	}
+
+	filter := bson.D{{Key: "_id", Value: subscriptionID}}
+
+	subscriptionRecord := models.SubscriptionCollection.FindOne(c.Context(), filter)
+	if subscriptionRecord.Err() != nil {
+		return c.Status(400).JSON(fiber.Map{"success": false, "data": "No subscription with id: " + idParam + " was found!"})
+	}
+
+	subscriptionRecordStruct := &models.Subscription{}
+	subscriptionRecord.Decode(subscriptionRecordStruct)
+
+	coreMergeStructs(reflect.ValueOf(subscription), reflect.Indirect(reflect.ValueOf(subscriptionRecordStruct)))
+
+	finalSubscriptionRecord := models.SubscriptionCollection.FindOneAndReplace(c.Context(), filter, subscriptionRecordStruct)
+
+	if finalSubscriptionRecord.Err() != nil {
+		return c.Status(400).JSON(fiber.Map{"success": false, "data": "No subscription with id: " + idParam + " was found!"})
+	}
+
+	updatedSubscription := &models.Subscription{}
+	finalSubscriptionRecord.Decode(updatedSubscription)
+
+	return c.JSON(fiber.Map{"success": true, "data": updatedSubscription})
+	// return c.SendString("Endpoint is working: " + c.OriginalURL())
 }
 
 func DeleteSubscription(c *fiber.Ctx) error {
