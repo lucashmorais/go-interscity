@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"fmt"
 	"reflect"
 
 	"github.com/gofiber/fiber/v2"
@@ -11,7 +12,21 @@ import (
 )
 
 func GetSubscriptions(c *fiber.Ctx) error {
-	return c.SendString("Endpoint is working: " + c.OriginalURL())
+	filter := bson.D{{}}
+	cursor, err := models.SubscriptionCollection.Find(c.Context(), filter)
+	if err != nil {
+		return c.Status(500).JSON(fiber.Map{"success": false, "data": err})
+	}
+
+	var users []models.Subscription = make([]models.Subscription, 0)
+
+	if err := cursor.All(c.Context(), &users); err != nil {
+		fmt.Println(err)
+		return c.Status(500).JSON(fiber.Map{"success": false, "data": err})
+	}
+
+	return c.JSON(fiber.Map{"success": true, "data": users})
+	// return c.SendString("Endpoint is working: " + c.OriginalURL())
 }
 
 func GetSubscription(c *fiber.Ctx) error {

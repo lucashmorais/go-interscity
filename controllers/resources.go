@@ -1,6 +1,8 @@
 package controllers
 
 import (
+	"fmt"
+
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
 	"github.com/lucashmorais/go-interscity/models"
@@ -21,11 +23,41 @@ func ResourceRoutes(app *fiber.App) {
 */
 
 func GetResources(c *fiber.Ctx) error {
-	return c.SendString("Endpoint is working: " + c.OriginalURL())
+	filter := bson.D{{}}
+	cursor, err := models.ResourceCollection.Find(c.Context(), filter)
+	if err != nil {
+		return c.Status(500).JSON(fiber.Map{"success": false, "data": err})
+	}
+
+	var users []models.Resource = make([]models.Resource, 0)
+
+	if err := cursor.All(c.Context(), &users); err != nil {
+		fmt.Println(err)
+		return c.Status(500).JSON(fiber.Map{"success": false, "data": err})
+	}
+
+	return c.JSON(fiber.Map{"success": true, "data": users})
+	// return c.SendString("Endpoint is working: " + c.OriginalURL())
 }
 
 func GetResource(c *fiber.Ctx) error {
-	return c.SendString("Endpoint is working: " + c.OriginalURL())
+	idParam := c.Params("uuid")
+	// resourceID, err := primitive.ObjectIDFromHex(idParam)
+	// if err != nil {
+	// 	return c.Status(400).JSON(fiber.Map{"success": false, "data": idParam + " is not a valid id!"})
+	// }
+
+	filer := bson.D{{Key: "_id", Value: idParam}}
+	resourceRecord := models.ResourceCollection.FindOne(c.Context(), filer)
+	if resourceRecord.Err() != nil {
+		return c.Status(400).JSON(fiber.Map{"success": false, "data": "No resource with id: " + idParam + " was found!"})
+	}
+
+	resource := &models.Resource{}
+	resourceRecord.Decode(resource)
+
+	return c.JSON(fiber.Map{"success": true, "data": resource})
+	// return c.SendString("Endpoint is working: " + c.OriginalURL())
 }
 
 func CreateResource(c *fiber.Ctx) error {
