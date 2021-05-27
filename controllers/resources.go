@@ -116,7 +116,16 @@ func UpdateResource(c *fiber.Ctx) error {
 }
 
 func DeleteResource(c *fiber.Ctx) error {
-	return c.SendString("Endpoint is working: " + c.OriginalURL())
+	idParam := c.Params("uuid")
+
+	filter := bson.D{{Key: "_id", Value: idParam}}
+	resourceRecord := models.ResourceCollection.FindOneAndDelete(c.Context(), filter)
+	if resourceRecord.Err() != nil {
+		return c.Status(400).JSON(fiber.Map{"success": false, "data": "No resource with id: " + idParam + " was found!"})
+	}
+
+	return c.JSON(fiber.Map{"success": true, "data": "Resource was deleted!"})
+	// return c.SendString("Endpoint is working: " + c.OriginalURL())
 }
 
 func PostData(c *fiber.Ctx) error {
