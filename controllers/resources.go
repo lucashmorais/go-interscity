@@ -129,5 +129,25 @@ func DeleteResource(c *fiber.Ctx) error {
 }
 
 func PostData(c *fiber.Ctx) error {
-	return c.SendString("Endpoint is working: " + c.OriginalURL())
+	idParam := c.Params("uuid")
+
+	resourceData := new(models.ResourceData)
+	if err := c.BodyParser(resourceData); err != nil {
+		return c.Status(400).JSON(fiber.Map{"success": false, "data": err})
+	}
+
+	resourceData.UUID = idParam
+
+	insertionResult, err := models.ResourceDataCollection.InsertOne(c.Context(), resourceData)
+	if err != nil {
+		return c.Status(400).JSON(fiber.Map{"success": false, "data": err})
+	}
+
+	filter := bson.D{{Key: "_id", Value: insertionResult.InsertedID}}
+	createdRecord := models.ResourceDataCollection.FindOne(c.Context(), filter)
+
+	createdResourceData := &models.ResourceData{}
+	createdRecord.Decode(createdResourceData)
+
+	return c.JSON(fiber.Map{"id": insertionResult.InsertedID, "success": true, "data": createdResourceData})
 }

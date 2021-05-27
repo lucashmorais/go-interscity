@@ -37,6 +37,7 @@ func main() {
 	models.CreateUserSchema()
 	models.CreateResourceSchema()
 	models.CreateSubscriptionSchema()
+	models.CreateResourceDataSchema()
 	println("Just created the schemas.")
 
 	// Middleware

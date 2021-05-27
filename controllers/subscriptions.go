@@ -5,7 +5,6 @@ import (
 	"reflect"
 
 	"github.com/gofiber/fiber/v2"
-	"github.com/google/uuid"
 	"github.com/lucashmorais/go-interscity/models"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -65,13 +64,6 @@ func GetSubscriptionByResourceUUID(c *fiber.Ctx) error {
 }
 
 func CreateSubscription(c *fiber.Ctx) error {
-	// return c.SendString("Endpoint is working: " + c.OriginalURL())
-
-	resultString := ""
-	uuid := uuid.NewString()
-
-	resultString += uuid
-
 	subscription := new(models.Subscription)
 	if err := c.BodyParser(subscription); err != nil {
 		return c.Status(400).JSON(fiber.Map{"success": false, "data": err})
