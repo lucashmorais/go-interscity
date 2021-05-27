@@ -121,5 +121,18 @@ func UpdateSubscription(c *fiber.Ctx) error {
 }
 
 func DeleteSubscription(c *fiber.Ctx) error {
-	return c.SendString("Endpoint is working: " + c.OriginalURL())
+	idParam := c.Params("id")
+	subscriptionID, err := primitive.ObjectIDFromHex(idParam)
+	if err != nil {
+		return c.Status(400).JSON(fiber.Map{"success": false, "data": idParam + " is not a valid id!"})
+	}
+
+	filter := bson.D{{Key: "_id", Value: subscriptionID}}
+	subscriptionRecord := models.SubscriptionCollection.FindOneAndDelete(c.Context(), filter)
+	if subscriptionRecord.Err() != nil {
+		return c.Status(400).JSON(fiber.Map{"success": false, "data": "No subscription with id: " + idParam + " was found!"})
+	}
+
+	return c.JSON(fiber.Map{"success": true, "data": "Subscription was deleted!"})
+	// return c.SendString("Endpoint is working: " + c.OriginalURL())
 }

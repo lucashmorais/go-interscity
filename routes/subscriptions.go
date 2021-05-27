@@ -14,5 +14,5 @@ func SubscriptionRoutes(app *fiber.App) {
 	components.Get("/:id", controllers.GetSubscription)
 	components.Get("/", controllers.GetSubscriptionByResourceUUID)
 
-	components.Delete("/:uuid", controllers.DeleteSubscription)
+	components.Delete("/:id", controllers.DeleteSubscription)
 }
