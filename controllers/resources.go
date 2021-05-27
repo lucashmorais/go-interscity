@@ -42,13 +42,9 @@ func GetResources(c *fiber.Ctx) error {
 
 func GetResource(c *fiber.Ctx) error {
 	idParam := c.Params("uuid")
-	// resourceID, err := primitive.ObjectIDFromHex(idParam)
-	// if err != nil {
-	// 	return c.Status(400).JSON(fiber.Map{"success": false, "data": idParam + " is not a valid id!"})
-	// }
 
-	filer := bson.D{{Key: "_id", Value: idParam}}
-	resourceRecord := models.ResourceCollection.FindOne(c.Context(), filer)
+	filter := bson.D{{Key: "_id", Value: idParam}}
+	resourceRecord := models.ResourceCollection.FindOne(c.Context(), filter)
 	if resourceRecord.Err() != nil {
 		return c.Status(400).JSON(fiber.Map{"success": false, "data": "No resource with id: " + idParam + " was found!"})
 	}
@@ -90,7 +86,33 @@ func CreateResource(c *fiber.Ctx) error {
 }
 
 func UpdateResource(c *fiber.Ctx) error {
-	return c.SendString("Endpoint is working: " + c.OriginalURL())
+	idParam := c.Params("uuid")
+
+	filter := bson.D{{Key: "_id", Value: idParam}}
+	resourceRecord := models.ResourceCollection.FindOne(c.Context(), filter)
+	if resourceRecord.Err() != nil {
+		return c.Status(400).JSON(fiber.Map{"success": false, "data": "No resource with id: " + idParam + " was found!"})
+	}
+
+	resource := new(models.Resource)
+	if err := c.BodyParser(resource); err != nil {
+		return c.Status(400).JSON(fiber.Map{"success": false, "data": err})
+	}
+
+	resource.UUID = idParam
+
+	// ONE CANNOT REPLACE AN ENTRY FOR ANOTHER ONE MISSING A PRIMARY KEY
+	finalResourceRecord := models.ResourceCollection.FindOneAndReplace(c.Context(), filter, resource)
+
+	if finalResourceRecord.Err() != nil {
+		return c.Status(400).JSON(fiber.Map{"success": false, "data": "[SECOND] No resource with id: " + idParam + " was found!"})
+	}
+
+	updatedResource := &models.Resource{}
+	finalResourceRecord.Decode(updatedResource)
+
+	return c.JSON(fiber.Map{"success": true, "data": updatedResource})
+	// return c.SendString("Endpoint is working: " + c.OriginalURL())
 }
 
 func DeleteResource(c *fiber.Ctx) error {

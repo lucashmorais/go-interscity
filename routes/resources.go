@@ -22,7 +22,7 @@ func ResourceRoutes(app *fiber.App) {
 	components.Get("/", controllers.GetResources)
 	components.Get("/:uuid", controllers.GetResource)
 	components.Post("/", controllers.CreateResource)
-	components.Patch("/:uuid", controllers.UpdateResource)
+	components.Put("/:uuid", controllers.UpdateResource)
 	components.Delete("/:uuid", controllers.DeleteResource)
 
 	components.Post("/:uuid/data", controllers.PostData)
