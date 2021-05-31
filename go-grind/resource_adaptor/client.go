@@ -17,10 +17,9 @@ func BasicGetResources() {
 	println(response)
 }
 
-func GetResource(wg *sync.WaitGroup, uuid string) {
-	// println(utils.GetServerURL())
+func GetResource(wg *sync.WaitGroup, uuid interface{}) {
 	var agent *fiber.Agent
-	query_string := utils.GetServerURL() + "/components/" + uuid
+	query_string := utils.GetServerURL() + "/components/" + uuid.(string)
 
 	defer wg.Done()
 
@@ -32,10 +31,9 @@ func GetResource(wg *sync.WaitGroup, uuid string) {
 	}
 }
 
-func GetResources(wg *sync.WaitGroup) {
-	// println(utils.GetServerURL())
+func GetResources(wg *sync.WaitGroup, extras interface{}) {
 	var agent *fiber.Agent
-	query_string := utils.GetServerURL() + "/components/"
+	query_string := utils.GetServerURL() + "/components"
 
 	defer wg.Done()
 
