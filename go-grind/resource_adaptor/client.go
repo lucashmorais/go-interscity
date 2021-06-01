@@ -30,13 +30,74 @@ type PostResponse struct {
 	UUID string `json: UUID`
 }
 
-func CorePostResource() string {
+func CorePutResource(uuid string, marshalled_body []byte) {
+	query_string := utils.GetServerURL() + "/resources/" + uuid
+
+	agent := fiber.Put(query_string)
+	request := agent.Request()
+
+	request.SetBody(marshalled_body)
+	request.Header.Add("Content-type", "application/json")
+
+	println("PUT request about to be performed")
+	agent.Do(request, nil)
+	println("PUT request was just performed")
+}
+
+func CreateAndUpdate(wg *sync.WaitGroup, extras interface{}) {
+	defer wg.Done()
+
+	examplePostBody := GetExampleResourceBody()
+
+	for i := 0; i < NUM_REQUESTS; i++ {
+		uuid := CorePostResource(examplePostBody)
+		CorePutResource(uuid, examplePostBody)
+	}
+}
+
+// Fields are not encodable by json.Marshal if they
+// are not exported by having their names starting
+// with a capital letter.
+type Resource struct {
+	Description  string   `json:"description"`
+	Capabilities []string `json:"capabilities"`
+	Status       string   `json:"status"`
+	Lat          float64  `json:"lat"`
+	Lon          float64  `json:"lon"`
+}
+
+func GetExampleResourceBody() []byte {
+	body, err := json.Marshal(Resource{
+		Description: "A public bus",
+		Capabilities: []string{
+			"temperature",
+			"humidity",
+			"illuminate",
+		},
+		Status: "active",
+		Lat:    -23.559616,
+		Lon:    -46.731386,
+	})
+
+	if err != nil {
+		fmt.Println("error: ", err)
+		return nil
+	}
+
+	return body
+}
+
+func CorePostResource(body []byte) string {
 	query_string := utils.GetServerURL() + "/resources"
 
 	agent := fiber.Post(query_string)
+	request := agent.Request()
 	response := fiber.AcquireResponse()
 
-	agent.Do(agent.Request(), response)
+	request.SetBody(body)
+	request.Header.Add("Content-type", "application/json")
+
+	agent.Do(request, response)
 
 	var result PostResponse
 
@@ -53,8 +114,10 @@ func CorePostResource() string {
 func CreateResourceAndDeleteIt(wg *sync.WaitGroup, extras interface{}) {
 	defer wg.Done()
 
+	examplePostBody := GetExampleResourceBody()
+
 	for i := 0; i < NUM_REQUESTS; i++ {
-		uuid := CorePostResource()
+		uuid := CorePostResource(examplePostBody)
 		CoreDeleteResource(uuid)
 	}
 }
