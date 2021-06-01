@@ -18,7 +18,7 @@ func UserRoutes(app *fiber.App) {
 */
 
 func ResourceRoutes(app *fiber.App) {
-	components := app.Group("/components")
+	components := app.Group("/resources")
 	components.Get("/", controllers.GetResources)
 	components.Get("/:uuid", controllers.GetResource)
 	components.Post("/", controllers.CreateResource)
