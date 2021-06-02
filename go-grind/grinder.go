@@ -49,7 +49,11 @@ func TestResourceGetAll() {
 }
 
 func TestResourceGetSingle() {
-	coreTester(2000, 4, resource_adaptor.GetResource, "df53c0bc-fdc0-475c-a875-0fef83cd15f1")
+	coreTester(2000, 4, resource_adaptor.GetResource, "bd5329d9-1594-4b1a-881e-c6cabc5a3002")
+}
+
+func TestResourceGetSingleAsync() {
+	coreTester(00000, 1, resource_adaptor.GetResourceAsync, "bd5329d9-1594-4b1a-881e-c6cabc5a3002")
 }
 
 func TestCreateAndDeleteResource() {
@@ -57,7 +61,7 @@ func TestCreateAndDeleteResource() {
 }
 
 func TestCreateAndUpdateResource() {
-	coreTester(1000, 4, resource_adaptor.CreateResourceAndUpdate, nil)
+	coreTester(10, 4, resource_adaptor.CreateResourceAndUpdate, nil)
 }
 
 func TestCreateAndUpdateAndDeleteResource() {
@@ -71,9 +75,10 @@ func TestCreateAndGetAndUpdateAndDeleteResource() {
 func main() {
 	godotenv.Load("./config/config.env")
 	// TestResourceGetAll()
-	// TestResourceGetSingle()
 	// TestCreateAndDeleteResource()
 	// TestCreateAndUpdateResource()
 	// TestCreateAndUpdateAndDeleteResource()
-	TestCreateAndGetAndUpdateAndDeleteResource()
+	// TestCreateAndGetAndUpdateAndDeleteResource()
+	// TestResourceGetSingle()
+	TestResourceGetSingleAsync()
 }

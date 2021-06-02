@@ -69,7 +69,7 @@ func CreateResourceAndGetAndUpdateAndDelete(wg *sync.WaitGroup, extras interface
 				break
 			}
 		}
-		CoreGetResource(uuid)
+		CoreGetResource(uuid, nil)
 		CorePutResource(uuid, examplePostBody)
 		CoreDeleteResource(uuid)
 	}
@@ -179,8 +179,11 @@ func CreateResourceAndDelete(wg *sync.WaitGroup, extras interface{}) {
 	}
 }
 
-func CoreGetResource(uuid string) {
+func CoreGetResource(uuid string, wgInner *sync.WaitGroup) {
 	query_string := utils.GetServerURL() + "/resources/" + uuid
+	if wgInner != nil {
+		defer wgInner.Done()
+	}
 
 	agent := fiber.Get(query_string)
 	request := agent.Request()
@@ -195,6 +198,8 @@ func CoreGetResource(uuid string) {
 		}
 		println(response.StatusCode())
 	}
+
+	agent.CloseIdleConnections()
 }
 
 func GetResource(wg *sync.WaitGroup, uuid interface{}) {
@@ -202,8 +207,26 @@ func GetResource(wg *sync.WaitGroup, uuid interface{}) {
 
 	// This DOES NOT perform any request before the following loop starts
 	for i := 0; i < NUM_REQUESTS; i++ {
-		CoreGetResource(uuid.(string))
+		CoreGetResource(uuid.(string), nil)
 	}
+}
+
+func GetResourceAsync(wg *sync.WaitGroup, uuid interface{}) {
+	defer wg.Done()
+
+	wgInner := sync.WaitGroup{}
+
+	for i := 0; i < NUM_REQUESTS; i++ {
+		wgInner.Add(1)
+		go CoreGetResource(uuid.(string), &wgInner)
+
+		// if i%200 == 0 {
+		// 	wgInner.Wait()
+		// }
+	}
+
+	println("Waiting for requests to be completed.")
+	wgInner.Wait()
 }
 
 func GetResources(wg *sync.WaitGroup, extras interface{}) {
