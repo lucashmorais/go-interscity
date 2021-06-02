@@ -62,8 +62,14 @@ func CreateResourceAndGetAndUpdateAndDelete(wg *sync.WaitGroup, extras interface
 	examplePostBody := GetExampleResourceBody()
 
 	for i := 0; i < NUM_REQUESTS; i++ {
-		uuid := CorePostResource(examplePostBody)
-		//TODO: ADD GET
+		var uuid string
+		for {
+			uuid = CorePostResource(examplePostBody)
+			if uuid != "" {
+				break
+			}
+		}
+		CoreGetResource(uuid)
 		CorePutResource(uuid, examplePostBody)
 		CoreDeleteResource(uuid)
 	}
@@ -173,18 +179,30 @@ func CreateResourceAndDelete(wg *sync.WaitGroup, extras interface{}) {
 	}
 }
 
-func GetResource(wg *sync.WaitGroup, uuid interface{}) {
-	var agent *fiber.Agent
-	query_string := utils.GetServerURL() + "/resources/" + uuid.(string)
+func CoreGetResource(uuid string) {
+	query_string := utils.GetServerURL() + "/resources/" + uuid
 
+	agent := fiber.Get(query_string)
+	request := agent.Request()
+
+	request.Header.Add("Content-type", "application/json")
+
+	for {
+		response := fiber.AcquireResponse()
+		agent.Do(request, response)
+		if response.StatusCode() == 200 {
+			break
+		}
+		println(response.StatusCode())
+	}
+}
+
+func GetResource(wg *sync.WaitGroup, uuid interface{}) {
 	defer wg.Done()
 
 	// This DOES NOT perform any request before the following loop starts
-	agent = fiber.Get(query_string).Reuse()
-	dst := make([]byte, 1000000)
-
 	for i := 0; i < NUM_REQUESTS; i++ {
-		agent.Get(dst, query_string)
+		CoreGetResource(uuid.(string))
 	}
 }
 
