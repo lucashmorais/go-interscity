@@ -61,7 +61,11 @@ func TestCreateAndUpdateResource() {
 }
 
 func TestCreateAndUpdateAndDeleteResource() {
-	coreTester(1000, 8, resource_adaptor.CreateResourceAndUpdateAndDelete, nil)
+	coreTester(1000, 4, resource_adaptor.CreateResourceAndUpdateAndDelete, nil)
+}
+
+func TestCreateAndGetAndUpdateAndDeleteResource() {
+	coreTester(1000, 4, resource_adaptor.CreateResourceAndGetAndUpdateAndDelete, nil)
 }
 
 func main() {
@@ -70,5 +74,6 @@ func main() {
 	// TestResourceGetSingle()
 	// TestCreateAndDeleteResource()
 	// TestCreateAndUpdateResource()
-	TestCreateAndUpdateAndDeleteResource()
+	// TestCreateAndUpdateAndDeleteResource()
+	TestCreateAndGetAndUpdateAndDeleteResource()
 }
