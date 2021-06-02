@@ -23,7 +23,14 @@ func CoreDeleteResource(uuid string) {
 	query_string := utils.GetServerURL() + "/resources/" + uuid
 
 	agent := fiber.Delete(query_string)
-	agent.Do(agent.Request(), nil)
+	for {
+		response := fiber.AcquireResponse()
+		agent.Do(agent.Request(), response)
+		if response.StatusCode() == 200 {
+			break
+		}
+		println(response.StatusCode())
+	}
 }
 
 type PostResponse struct {
@@ -39,12 +46,48 @@ func CorePutResource(uuid string, marshalled_body []byte) {
 	request.SetBody(marshalled_body)
 	request.Header.Add("Content-type", "application/json")
 
-	println("PUT request about to be performed")
-	agent.Do(request, nil)
-	println("PUT request was just performed")
+	for {
+		response := fiber.AcquireResponse()
+		agent.Do(request, response)
+		if response.StatusCode() == 200 {
+			break
+		}
+		println(response.StatusCode())
+	}
 }
 
-func CreateAndUpdate(wg *sync.WaitGroup, extras interface{}) {
+func CreateResourceAndGetAndUpdateAndDelete(wg *sync.WaitGroup, extras interface{}) {
+	defer wg.Done()
+
+	examplePostBody := GetExampleResourceBody()
+
+	for i := 0; i < NUM_REQUESTS; i++ {
+		uuid := CorePostResource(examplePostBody)
+		//TODO: ADD GET
+		CorePutResource(uuid, examplePostBody)
+		CoreDeleteResource(uuid)
+	}
+}
+
+func CreateResourceAndUpdateAndDelete(wg *sync.WaitGroup, extras interface{}) {
+	defer wg.Done()
+
+	examplePostBody := GetExampleResourceBody()
+
+	for i := 0; i < NUM_REQUESTS; i++ {
+		var uuid string
+		for {
+			uuid = CorePostResource(examplePostBody)
+			if uuid != "" {
+				break
+			}
+		}
+		CorePutResource(uuid, examplePostBody)
+		CoreDeleteResource(uuid)
+	}
+}
+
+func CreateResourceAndUpdate(wg *sync.WaitGroup, extras interface{}) {
 	defer wg.Done()
 
 	examplePostBody := GetExampleResourceBody()
@@ -67,7 +110,7 @@ type Resource struct {
 }
 
 func GetExampleResourceBody() []byte {
-	body, err := json.Marshal(Resource{
+	body, err := json.Marshal(map[string]interface{}{"data": Resource{
 		Description: "A public bus",
 		Capabilities: []string{
 			"temperature",
@@ -77,13 +120,14 @@ func GetExampleResourceBody() []byte {
 		Status: "active",
 		Lat:    -23.559616,
 		Lon:    -46.731386,
-	})
+	}})
 
 	if err != nil {
 		fmt.Println("error: ", err)
 		return nil
 	}
 
+	println(string(body))
 	return body
 }
 
@@ -97,21 +141,28 @@ func CorePostResource(body []byte) string {
 	request.SetBody(body)
 	request.Header.Add("Content-type", "application/json")
 
-	agent.Do(request, response)
+	for {
+		agent.Do(request, response)
+		if response.StatusCode() == 200 {
+			break
+		}
+		println(response.StatusCode())
+	}
 
 	var result PostResponse
 
 	err := json.Unmarshal(response.Body(), &result)
 
 	if err != nil {
-		fmt.Println("error:", err)
+		// fmt.Println("[CorePostResource] error:", err)
+		// fmt.Println("[CorePostResource]: Body of failed response: " + string(response.Body()))
 		return ""
 	}
 
 	return result.UUID
 }
 
-func CreateResourceAndDeleteIt(wg *sync.WaitGroup, extras interface{}) {
+func CreateResourceAndDelete(wg *sync.WaitGroup, extras interface{}) {
 	defer wg.Done()
 
 	examplePostBody := GetExampleResourceBody()

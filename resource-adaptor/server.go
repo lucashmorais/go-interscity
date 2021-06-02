@@ -20,6 +20,7 @@ func main() {
 		Prefork:       true,
 		CaseSensitive: true,
 		StrictRouting: true,
+		// Concurrency:   4 * 1024 * 1024,
 		// ServerHeader:  "Fiber",
 	})
 
