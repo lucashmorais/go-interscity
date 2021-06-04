@@ -229,6 +229,29 @@ func GetResourceAsync(wg *sync.WaitGroup, uuid interface{}) {
 	wgInner.Wait()
 }
 
+func CoreGetResources(wgInner *sync.WaitGroup) {
+	query_string := utils.GetServerURL() + "/resources"
+	if wgInner != nil {
+		defer wgInner.Done()
+	}
+
+	agent := fiber.Get(query_string)
+	request := agent.Request()
+
+	request.Header.Add("Content-type", "application/json")
+
+	for {
+		response := fiber.AcquireResponse()
+		agent.Do(request, response)
+		if response.StatusCode() == 200 {
+			break
+		}
+		println(response.StatusCode())
+	}
+
+	agent.CloseIdleConnections()
+}
+
 func GetResources(wg *sync.WaitGroup, extras interface{}) {
 	var agent *fiber.Agent
 	query_string := utils.GetServerURL() + "/resources"
@@ -243,4 +266,18 @@ func GetResources(wg *sync.WaitGroup, extras interface{}) {
 		agent.Get(dst, query_string)
 		// agent.Do(agent.Request(), nil)
 	}
+}
+
+func GetResourcesAsync(wg *sync.WaitGroup, extras interface{}) {
+	wgInner := sync.WaitGroup{}
+
+	defer wg.Done()
+
+	for i := 0; i < NUM_REQUESTS; i++ {
+		wgInner.Add(1)
+		go CoreGetResources(&wgInner)
+	}
+
+	println("Waiting for requests to be completed.")
+	wgInner.Wait()
 }

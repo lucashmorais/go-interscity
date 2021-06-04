@@ -45,7 +45,11 @@ func coreTester(numRequests int, numParallelWorkers int, goRoutine func(*sync.Wa
 }
 
 func TestResourceGetAll() {
-	coreTester(2000, 4, resource_adaptor.GetResources, nil)
+	coreTester(4000, 4, resource_adaptor.GetResources, nil)
+}
+
+func TestResourceGetAllAsync() {
+	coreTester(800000, 1, resource_adaptor.GetResourcesAsync, nil)
 }
 
 func TestResourceGetSingle() {
@@ -53,7 +57,7 @@ func TestResourceGetSingle() {
 }
 
 func TestResourceGetSingleAsync() {
-	coreTester(00000, 1, resource_adaptor.GetResourceAsync, "bd5329d9-1594-4b1a-881e-c6cabc5a3002")
+	coreTester(800000, 1, resource_adaptor.GetResourceAsync, "bd5329d9-1594-4b1a-881e-c6cabc5a3002")
 }
 
 func TestCreateAndDeleteResource() {
@@ -74,11 +78,12 @@ func TestCreateAndGetAndUpdateAndDeleteResource() {
 
 func main() {
 	godotenv.Load("./config/config.env")
-	// TestResourceGetAll()
 	// TestCreateAndDeleteResource()
 	// TestCreateAndUpdateResource()
 	// TestCreateAndUpdateAndDeleteResource()
 	// TestCreateAndGetAndUpdateAndDeleteResource()
 	// TestResourceGetSingle()
-	TestResourceGetSingleAsync()
+	// TestResourceGetSingleAsync()
+	// TestResourceGetAll()
+	TestResourceGetAllAsync()
 }
