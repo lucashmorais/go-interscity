@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/joho/godotenv"
@@ -11,13 +12,37 @@ import (
 	"github.com/lucashmorais/go-interscity/routes"
 )
 
+func PrecisionLogger() fiber.Handler {
+	return func(c *fiber.Ctx) error {
+		// start timer
+		start := time.Now()
+
+		// next routes
+		err := c.Next()
+
+		// stop timer
+		stop := time.Now()
+
+		// Print request duration
+		// fmt.Printf("app;dur=%v\n", stop.Sub(start).String())
+
+		// Print final time
+
+		client_address := c.Context().RemoteAddr().String()
+		fmt.Printf("[%s]: %v %v %v \n", client_address, stop.Sub(start).Microseconds(), start.Format(time.RFC3339Nano), stop.Format(time.RFC3339Nano))
+
+		// return stack error if exist
+		return err
+	}
+}
+
 func main() {
 	// Load enviromental variables from config
 	godotenv.Load("./config/config.env")
 
 	// Create new fiber instance
 	app := fiber.New(fiber.Config{
-		Prefork:       true,
+		// Prefork:       true,
 		CaseSensitive: true,
 		StrictRouting: true,
 		// Concurrency:   4 * 1024 * 1024,
@@ -42,6 +67,7 @@ func main() {
 	// Middleware
 	// app.Use(logger.New())
 	// app.Use(cors.New())
+	app.Use(PrecisionLogger())
 
 	// Routes
 	routes.UserRoutes(app)
