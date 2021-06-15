@@ -3,24 +3,15 @@ package controllers
 import (
 	"fmt"
 
+	"sync/atomic"
+
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
 	"github.com/lucashmorais/go-interscity/models"
 	"go.mongodb.org/mongo-driver/bson"
 )
 
-/*
-func ResourceRoutes(app *fiber.App) {
-	components := app.Group("/components")
-	components.Get("/", controllers.GetResources)
-	components.Get("/:uuid", controllers.GetResource)
-	components.Post("/", controllers.CreateResource)
-	components.Patch("/:uuid", controllers.UpdateResource)
-	components.Delete("/:uuid", controllers.DeleteResource)
-
-	components.Post("/:uuid/data", controllers.PostData)
-}
-*/
+var count int32 = 0
 
 func GetResources(c *fiber.Ctx) error {
 	filter := bson.D{{}}
@@ -36,7 +27,9 @@ func GetResources(c *fiber.Ctx) error {
 		return c.Status(500).JSON(fiber.Map{"success": false, "data": err})
 	}
 
-	return c.JSON(fiber.Map{"success": true, "data": users})
+	atomic.AddInt32(&count, 1)
+
+	return c.JSON(fiber.Map{"success": true, "data": users, "response-id": count})
 	// return c.SendString("Endpoint is working: " + c.OriginalURL())
 }
 

@@ -1,15 +1,21 @@
 package resource_adaptor
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
+	"math/rand"
 	"sync"
+	"time"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/lucashmorais/go-interscity/go-grind/utils"
+	"golang.org/x/sync/semaphore"
 )
 
 var NUM_REQUESTS int
+var NumFails int
+var count int = 0
 
 func BasicGetResources() {
 	println(utils.GetServerURL())
@@ -52,7 +58,9 @@ func CorePutResource(uuid string, marshalled_body []byte) {
 		if response.StatusCode() == 200 {
 			break
 		}
-		println(response.StatusCode())
+		println("Failing at endpoint: " + query_string)
+		time.Sleep(time.Millisecond * 100)
+		// println(response.StatusCode())
 	}
 }
 
@@ -104,6 +112,28 @@ func CreateResourceAndUpdate(wg *sync.WaitGroup, extras interface{}) {
 	}
 }
 
+func CoreCreateResourceAndUpdate(wgInner *sync.WaitGroup, examplePostBody []byte) {
+	defer wgInner.Done()
+
+	uuid := CorePostResource(examplePostBody)
+	CorePutResource(uuid, examplePostBody)
+}
+
+func CreateResourceAndUpdateAsync(wg *sync.WaitGroup, extras interface{}) {
+	wgInner := sync.WaitGroup{}
+	defer wg.Done()
+
+	examplePostBody := GetExampleResourceBody()
+
+	for i := 0; i < NUM_REQUESTS; i++ {
+		wgInner.Add(1)
+		go CoreCreateResourceAndUpdate(&wgInner, examplePostBody)
+	}
+
+	println("Waiting for requests to be completed.")
+	wgInner.Wait()
+}
+
 // Fields are not encodable by json.Marshal if they
 // are not exported by having their names starting
 // with a capital letter.
@@ -147,22 +177,30 @@ func CorePostResource(body []byte) string {
 	request.SetBody(body)
 	request.Header.Add("Content-type", "application/json")
 
-	for {
-		agent.Do(request, response)
-		if response.StatusCode() == 200 {
-			break
-		}
-		println(response.StatusCode())
-	}
+	numLocalFailures := 0
 
 	var result PostResponse
+	for {
+		for {
+			agent.Do(request, response)
+			if response.StatusCode() == 200 {
+				break
+			}
+			println(response.StatusCode())
+		}
 
-	err := json.Unmarshal(response.Body(), &result)
+		err := json.Unmarshal(response.Body(), &result)
 
-	if err != nil {
-		// fmt.Println("[CorePostResource] error:", err)
-		// fmt.Println("[CorePostResource]: Body of failed response: " + string(response.Body()))
-		return ""
+		if err == nil {
+			break
+		}
+
+		NumFails++
+		numLocalFailures++
+		if NumFails%1000 == 0 {
+			println("[CorePostResource]: Number of POST failures so far: ", NumFails)
+		}
+		time.Sleep(time.Millisecond * time.Duration(numLocalFailures*rand.Intn(200)))
 	}
 
 	return result.UUID
@@ -190,6 +228,7 @@ func CoreGetResource(uuid string, wgInner *sync.WaitGroup) {
 
 	request.Header.Add("Content-type", "application/json")
 
+	// start := measurement.StartMeasuringRequest()
 	for {
 		response := fiber.AcquireResponse()
 		agent.Do(request, response)
@@ -198,6 +237,7 @@ func CoreGetResource(uuid string, wgInner *sync.WaitGroup) {
 		}
 		println(response.StatusCode())
 	}
+	// measurement.StopMeasuringRequest(start, 0)
 
 	agent.CloseIdleConnections()
 }
@@ -229,27 +269,40 @@ func GetResourceAsync(wg *sync.WaitGroup, uuid interface{}) {
 	wgInner.Wait()
 }
 
-func CoreGetResources(wgInner *sync.WaitGroup) {
+func CoreGetResources(wgInner *sync.WaitGroup, ctx *context.Context, concurrencyLimiter *semaphore.Weighted) {
 	query_string := utils.GetServerURL() + "/resources"
 	if wgInner != nil {
 		defer wgInner.Done()
 	}
+
+	defer concurrencyLimiter.Release(1)
 
 	agent := fiber.Get(query_string)
 	request := agent.Request()
 
 	request.Header.Add("Content-type", "application/json")
 
+	backoffFactor := 12
 	for {
 		response := fiber.AcquireResponse()
 		agent.Do(request, response)
-		if response.StatusCode() == 200 {
+		if response.StatusCode() == 200 && len(response.Body()) != 0 {
 			break
 		}
-		println(response.StatusCode())
+
+		backoffFactor++
+		println(backoffFactor)
+		// time.Sleep(time.Duration(rand.Int31n(int32(math.Pow(2, float64(backoffFactor))))) * time.Millisecond)
 	}
 
-	agent.CloseIdleConnections()
+	count++
+
+	if count%1000 == 0 {
+		println(count)
+	}
+
+	// agent.CloseIdleConnections()
+	// println(string(response.Body()))
 }
 
 func GetResources(wg *sync.WaitGroup, extras interface{}) {
@@ -260,11 +313,30 @@ func GetResources(wg *sync.WaitGroup, extras interface{}) {
 
 	// This DOES NOT perform any request before the following loop starts
 	agent = fiber.Get(query_string).Reuse()
-	dst := make([]byte, 1000000)
+	request := agent.Request()
+	request.Header.Add("Content-type", "application/json")
+	// dst := make([]byte, 1000000)
 
+	// println("testing1")
 	for i := 0; i < NUM_REQUESTS; i++ {
-		agent.Get(dst, query_string)
-		// agent.Do(agent.Request(), nil)
+		// agent.Get(dst, query_string)
+
+		// println("testing2")
+		backoffFactor := 12
+		for {
+			// println("testing3")
+			response := fiber.AcquireResponse()
+			// println("testing4")
+			agent.Do(request, response)
+			// println("testing5")
+			if response.StatusCode() == 200 && len(response.Body()) != 0 {
+				break
+			}
+
+			backoffFactor++
+			println(backoffFactor)
+			// time.Sleep(time.Duration(rand.Int31n(int32(math.Pow(2, float64(backoffFactor))))) * time.Millisecond)
+		}
 	}
 }
 
@@ -273,9 +345,14 @@ func GetResourcesAsync(wg *sync.WaitGroup, extras interface{}) {
 
 	defer wg.Done()
 
+	var concurrencyLimiter = semaphore.NewWeighted(int64(1))
+	// ctx := context.Background()
+	ctx := context.TODO()
+
 	for i := 0; i < NUM_REQUESTS; i++ {
 		wgInner.Add(1)
-		go CoreGetResources(&wgInner)
+		concurrencyLimiter.Acquire(ctx, 1)
+		go CoreGetResources(&wgInner, &ctx, concurrencyLimiter)
 	}
 
 	println("Waiting for requests to be completed.")
