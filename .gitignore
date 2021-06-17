@@ -292,3 +292,8 @@ old/main.go
 .docker/rabbitmq/data/mnesia/rabbit@ff8f00cf57d5/msg_store_persistent/0.rdq
 .docker/rabbitmq/data/mnesia/rabbit@ff8f00cf57d5/msg_store_transient/0.rdq
 .docker/rabbitmq/etc/enabled_plugins
+go-grind/output/*.png
+go-grind/output/*.svg
+go-grind/output/*.jpg
+go-grind/output/*.jpeg
+resource-adaptor/*.log

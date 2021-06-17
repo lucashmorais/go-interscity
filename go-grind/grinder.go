@@ -2,6 +2,8 @@ package main
 
 import (
 	"fmt"
+	"os"
+	"strconv"
 	"sync"
 	"time"
 
@@ -44,20 +46,20 @@ func coreTester(numRequests int, numParallelWorkers int, goRoutine func(*sync.Wa
 	fmt.Printf("Rate: %2.2f\n", float64(NUM_PARALLEL_WORKERS*NUM_REQUESTS)/float64(duration.Seconds()))
 }
 
-func TestResourceGetAll() {
-	coreTester(4000, 4, resource_adaptor.GetResources, nil)
+func TestResourceGetAll(num_clients int, num_requests_per_client int) {
+	coreTester(num_requests_per_client, num_clients, resource_adaptor.GetResources, nil)
 }
 
 func TestResourceGetAllAsync() {
-	coreTester(800000, 1, resource_adaptor.GetResourcesAsync, nil)
+	coreTester(80, 1, resource_adaptor.GetResourcesAsync, nil)
 }
 
 func TestResourceGetSingle() {
-	coreTester(2000, 4, resource_adaptor.GetResource, "bd5329d9-1594-4b1a-881e-c6cabc5a3002")
+	coreTester(1, 4, resource_adaptor.GetResource, "0dd0a31b-acdf-4627-857f-fbacc4c86be4")
 }
 
 func TestResourceGetSingleAsync() {
-	coreTester(800000, 1, resource_adaptor.GetResourceAsync, "bd5329d9-1594-4b1a-881e-c6cabc5a3002")
+	coreTester(800000, 1, resource_adaptor.GetResourceAsync, "0dd0a31b-acdf-4627-857f-fbacc4c86be4")
 }
 
 func TestCreateAndDeleteResource() {
@@ -65,7 +67,11 @@ func TestCreateAndDeleteResource() {
 }
 
 func TestCreateAndUpdateResource() {
-	coreTester(10, 4, resource_adaptor.CreateResourceAndUpdate, nil)
+	coreTester(1, 4, resource_adaptor.CreateResourceAndUpdate, nil)
+}
+
+func TestCreateAndUpdateResourceAsync() {
+	coreTester(100000, 1, resource_adaptor.CreateResourceAndUpdateAsync, nil)
 }
 
 func TestCreateAndUpdateAndDeleteResource() {
@@ -78,12 +84,23 @@ func TestCreateAndGetAndUpdateAndDeleteResource() {
 
 func main() {
 	godotenv.Load("./config/config.env")
+	resource_adaptor.NumFails = 0
+
+	//TODO: Move this to each of the test drivers
+	// measurement.InitMeasurementArrays(1, 800000)
+
+	args := os.Args[1:]
+	num_clients, _ := strconv.Atoi(args[0])
+	num_requests_per_client, _ := strconv.Atoi(args[1])
+
 	// TestCreateAndDeleteResource()
 	// TestCreateAndUpdateResource()
 	// TestCreateAndUpdateAndDeleteResource()
 	// TestCreateAndGetAndUpdateAndDeleteResource()
 	// TestResourceGetSingle()
 	// TestResourceGetSingleAsync()
-	// TestResourceGetAll()
-	TestResourceGetAllAsync()
+	TestResourceGetAll(num_clients, num_requests_per_client)
+	// TestResourceGetAllAsync()
+	// TestCreateAndUpdateResource()
+	// TestCreateAndUpdateResourceAsync()
 }
