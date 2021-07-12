@@ -6,3 +6,5 @@ services:
         ports:
             - 37017:27017
         restart: unless-stopped
+        volumes:
+            - './mongodb_data:/data/db'
