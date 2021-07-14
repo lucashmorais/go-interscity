@@ -8,3 +8,11 @@ services:
         restart: unless-stopped
         volumes:
             - './mongodb_data:/data/db'
+    mongodb-hdd:
+        image : mongo
+        container_name: mongodb-hdd
+        ports:
+            - 37018:27017
+        restart: unless-stopped
+        volumes:
+            - '/barn/Docker_Volumes/mongodb_data:/data/db'

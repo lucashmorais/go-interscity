@@ -21,12 +21,23 @@ var Client *mongo.Client
 // DB | @desc: mongo database struct
 var DB *mongo.Database
 
+// var DB_PORT int
+
+func getMongoURI() string {
+	base := os.Getenv(("MONGO_URI_BASE"))
+	port := os.Getenv(("MONGO_PORT"))
+	suffix := os.Getenv(("MONGO_URI_SUFFIX"))
+
+	return base + port + suffix
+}
+
 // Connect | @desc: connects to mongoDB
 func Connect() {
 	var err error
 
 	Ctx, Cancel = context.WithTimeout(context.Background(), 30*time.Second)
-	Client, err = mongo.Connect(Ctx, options.Client().ApplyURI(os.Getenv("MONGO_URI")))
+	// Client, err = mongo.Connect(Ctx, options.Client().ApplyURI(os.Getenv("MONGO_URI")))
+	Client, err = mongo.Connect(Ctx, options.Client().ApplyURI(getMongoURI()))
 	if err != nil {
 		panic(err)
 	}
