@@ -14,6 +14,7 @@ from matplotlib import pyplot as plt
 SERVER_BASE_ROUTE = 'http://localhost'
 SERVER_TEST_ROUTE = '/'
 SERVER_PORT = 8888
+MONGO_PORT = 0
 
 class LatencyInfo:
 	def __init__(self, minimum, q10, med, average, q90, q95, std, cpu_freq):
@@ -91,7 +92,7 @@ def log_name(num_clients, num_requests_per_client):
 	return f"{num_clients}_{num_requests_per_client}.log"
     
 def get_server_command(num_clients: int, num_requests: int):
-	base = "cd /home/lucas/Repos/go-interscity/resource-adaptor/ && go run server.go > " 
+	base = f"cd /home/lucas/Repos/go-interscity/resource-adaptor/ && MONGO_PORT={MONGO_PORT} go run server.go > " 
 	command = base + f"{log_name(num_clients, num_requests)} 2>&1"
 	return command
 	
@@ -115,6 +116,8 @@ def core_spawn_test(num_clients: int, num_requests: int):
 
 	grinder_command = get_grinder_command(num_clients, num_requests)
 	server_command = get_server_command(num_clients, num_requests)
+	
+	print(f"[server_command]: {server_command}")
 
 	server_proc = Popen(args=server_command, shell=True, preexec_fn=os.setsid)
 	wait_until_server_is_up()
@@ -248,7 +251,17 @@ def spawn_test(args):
 	num_freq_tests = args.num_freq_steps
 	min_freq = args.min_cpu_freq
 	max_freq = args.max_cpu_freq
+	storage_type = args.storage_type
 	
+	print(f"[storage_type]: {storage_type}")
+
+	global MONGO_PORT
+	
+	if storage_type == "hdd":
+		MONGO_PORT = 37018
+	elif storage_type == "ssd":
+		MONGO_PORT = 37017
+
 	set_of_num_clients = get_set_of_num_clients(max_num_clients, num_tests)
 	
 	# If `min_freq == max_freq`, then this is going to output `[max_freq]`
@@ -273,10 +286,10 @@ argument_parser.add_argument('--num-clients', type=int, required=True)
 argument_parser.add_argument('--num-steps', type=int, default=10, required=False)
 argument_parser.add_argument('--num-freq-steps', type=int, default=3, required=False)
 argument_parser.add_argument('--requests-per-client', type=int, required=True)
-argument_parser.add_argument('--driver', dest='driver', choices=['requests', 'request'], help="Defines which test driver to use", default='requests')
 argument_parser.add_argument('--uuid', type=str, required=False)
 argument_parser.add_argument('--min-cpu-freq', type=int, required=False, help="Defines minimum processor frequency to be tested", default=3400)
 argument_parser.add_argument('--max-cpu-freq', type=int, required=False, help="Defines maximum processor frequency to be tested", default=3400)
+argument_parser.add_argument('--storage-type', choices=['ssd', 'hdd'], help="Defines what kind of storage the server DB should use", default='ssd')
 
 # https://docs.python.org/3/howto/argparse.html#introducing-optional-arguments
 # The "store_true" action makes argparser automatically assign "True" to the related variable anytime
