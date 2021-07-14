@@ -16,7 +16,7 @@ SERVER_TEST_ROUTE = '/'
 SERVER_PORT = 8888
 
 class LatencyInfo:
-	def __init__(self, minimum, q10, med, average, q90, q95, std):
+	def __init__(self, minimum, q10, med, average, q90, q95, std, cpu_freq):
 		self.minimum = minimum
 		self.q10 = q10
 		self.med = med
@@ -24,8 +24,9 @@ class LatencyInfo:
 		self.q90 = q90
 		self.q95 = q95
 		self.std = std
+		self.cpu_freq = cpu_freq
 	def __str__(self):
-		return f"{self.minimum}, {self.q10}, {self.med}, {self.average}, {self.q90}, {self.q95}, {self.std}"
+		return f"{self.minimum}, {self.q10}, {self.med}, {self.average}, {self.q90}, {self.q95}, {self.std}, {self.cpu_freq}"
 	
 def get_test_route():
 	return f"{SERVER_BASE_ROUTE}:{SERVER_PORT}{SERVER_TEST_ROUTE}"
@@ -42,7 +43,7 @@ def wait_until_server_is_up():
 	while (not test_server_is_up()):
 		time.sleep(0.3)
 
-def process_log(num_clients: int, num_requests: int):
+def process_log(num_clients: int, num_requests: int, cpu_freq: int):
 	raw_data = []
 	
 	base_log_path = "/home/lucas/Repos/go-interscity/resource-adaptor/"
@@ -62,7 +63,7 @@ def process_log(num_clients: int, num_requests: int):
 
 	plt.xlim([min(raw_data)-5, max(raw_data)+5])
 	plt.hist(raw_data, bins=bins, alpha=0.5)
-	plt.title('Server latency')
+	plt.title(f'Server latency at {cpu_freq} MHz,\nwith {num_requests} request per client')
 	plt.xlabel('Latency (milliseconds)')
 	plt.ylabel('Request count')
 
@@ -71,8 +72,8 @@ def process_log(num_clients: int, num_requests: int):
 	
 	base_figure_path = "/home/lucas/Repos/go-interscity/go-grind/output/"
 
-	plt.savefig(f"{base_figure_path}{num_clients}_{num_requests}.svg", format="svg")
-	plt.savefig(f"{base_figure_path}{num_clients}_{num_requests}.png", format="png", dpi=200)
+	# plt.savefig(f"{base_figure_path}{num_clients}_{num_requests}_{cpu_freq}MHz.svg", format="svg")
+	plt.savefig(f"{base_figure_path}{num_clients}_{num_requests}_{cpu_freq}MHz.png", format="png", dpi=200)
 	plt.close()
 	
 	average = np.average(raw_data)
@@ -81,7 +82,7 @@ def process_log(num_clients: int, num_requests: int):
 	quantiles = np.quantile(raw_data, [0.1, 0.9, 0.95])
 	minimum= np.min(raw_data)
 
-	latencyInfo = LatencyInfo(minimum, quantiles[0], median, average, quantiles[1], quantiles[2], std)
+	latencyInfo = LatencyInfo(minimum, quantiles[0], median, average, quantiles[1], quantiles[2], std, cpu_freq)
 	print(latencyInfo)
 
 	return latencyInfo
@@ -141,55 +142,55 @@ def get_split_set(max_value: int, num_values: int):
 def get_set_of_num_clients(max_num_clients: int, num_items: int):
 	return get_split_set(max_num_clients, num_items)
 
-def plotLatencyInfo(set_of_num_clients, data):
+def get_set_of_frequencies(max_freq: int, min_freq: int, num_values: int):
+	if (num_values < 2 or min_freq == max_freq):
+		return [max_freq]
+	step = float(max_freq - min_freq) / float(num_values - 1)
+	return [ round(step * i) + min_freq for i in range(num_values) ]
+
+def corePlotLatencyInfo(set_of_num_clients, ax, data, plot_error_bars=True, average_label="avg"):
 	averages = [ d.average for d in data ]
-	errors = [ d.std for d in data ]
-	mins = [ d.minimum for d in data ]
 	p10 = [ d.q10 for d in data ]
 	meds = [ d.med - d.q10 for d in data ]
 	true_meds = [ d.med for d in data ]
 	p90 = [ d.q90 - d.med for d in data ]
 	true_p90 = [ d.q90 for d in data ]
-	p95 = [ d.q95 for d in data ]
+
 	print(set_of_num_clients)
 	print(p10)
 	print(meds)
 
-	# Data for plotting
-	# t = np.arange(0.0, 2.0, 0.01)
-	# s = 1 + np.sin(2 * np.pi * t)
-
 	t = set_of_num_clients
 	s = averages
 
-	fig, ax = plt.subplots()
-	# ax.plot(t, s)
-	# ax.errorbar(t, s, errors)
-	# ax.errorbar(t, s, errors, marker='^', capsize=3)
-	# ax.errorbar(t, s, marker='^', capsize=3)
-	ax.errorbar(t, s, capsize=20, label="avg")
+	ax.errorbar(t, s, capsize=20, label=average_label)
 
 	ax.grid()
 	ax.set_axisbelow(True)
 
-	_, caps0, _ = ax.errorbar(t, p10, [ d.q10 - d.minimum for d in data ], linestyle='', uplims=True, capsize=3, ecolor='#457B9D')
-	_, caps1, _ = ax.errorbar(t, true_p90, [ d.q95 - d.q90 for d in data ], linestyle='', lolims=True, capsize=3, ecolor='#E63946')
+	if (plot_error_bars):
+		_, caps0, _ = ax.errorbar(t, p10, [ d.q10 - d.minimum for d in data ], linestyle='', uplims=True, capsize=3, ecolor='#457B9D')
+		_, caps1, _ = ax.errorbar(t, true_p90, [ d.q95 - d.q90 for d in data ], linestyle='', lolims=True, capsize=3, ecolor='#E63946')
 
-	# ax.errorbar(t, p10, [[ d.q10 - d.minimum for d in data ], [ 0 for d in data ]], linestyle='', capsize=3, ecolor='blue')
-	# ax.errorbar(t, true_p90, [[0 for d in data], [ d.q95 - d.q90 for d in data ]], linestyle='', capsize=3, ecolor='green')
+		caps0[0].set_marker('_')
+		caps0[0].set_markersize(10)
+		caps1[0].set_marker('_')
+		caps1[0].set_markersize(10)
 
-	# https://stackoverflow.com/questions/45752981/removing-the-bottom-error-caps-only-on-matplotlib
-	ax.bar(t, meds, width=100, bottom=p10, color="#5590B4",  edgecolor='#457B9D', label="min/p10/med")
-	ax.bar(t, p90, width=100, bottom=true_meds, color="#F07F89",  edgecolor='#E63946', label="med/p90/p95")
+		# https://stackoverflow.com/questions/45752981/removing-the-bottom-error-caps-only-on-matplotlib
+		ax.bar(t, meds, width=100, bottom=p10, color="#5590B4",  edgecolor='#457B9D', label="min/p10/med")
+		ax.bar(t, p90, width=100, bottom=true_meds, color="#F07F89",  edgecolor='#E63946', label="med/p90/p95")
+
+def plotLatencyInfo(set_of_num_clients, data, plot_log=False):
+	fig, ax = plt.subplots()
+    
+	corePlotLatencyInfo(set_of_num_clients, ax, data)
 	
-	caps0[0].set_marker('_')
-	caps0[0].set_markersize(10)
-	caps1[0].set_marker('_')
-	caps1[0].set_markersize(10)
+	# This assumes `cpu_freq` to be the same across all data elements
+	cpu_freq = data[0].cpu_freq
 
 	ax.set(xlabel='Number of concurrent clients', ylabel='Latency (milliseconds)',
-	       title='Average latency')
-	# plt.yticks(np.arange(0, 1000, step=0.1))  # Set label locations.
+	title=f'Average latency at {cpu_freq} MHz')
 	
 	# Information on how to build custom scales
 	# https://stackoverflow.com/questions/31168051/creating-probability-frequency-axis-grid-irregularly-spaced-with-matplotlib/31170170#31170170
@@ -197,10 +198,44 @@ def plotLatencyInfo(set_of_num_clients, data):
 
 	base_figure_path = "/home/lucas/Repos/go-interscity/go-grind/output/"
 
-	fig.savefig(f"{base_figure_path}degradation_plot_up_to_{set_of_num_clients[-1]}_clients.png", dpi=200)
+	fig.savefig(f"{base_figure_path}degradation_plot_up_to_{set_of_num_clients[-1]}_clients_{cpu_freq}MHz.png", dpi=200)
 
-	plt.yscale('log')
-	fig.savefig(f"{base_figure_path}degradation_plot_up_to_{set_of_num_clients[-1]}_clients_log.png", dpi=200)
+	if (plot_log):
+		plt.yscale('log')
+		fig.savefig(f"{base_figure_path}degradation_plot_up_to_{set_of_num_clients[-1]}_clients_log_{cpu_freq}MHz.png", dpi=200)
+
+	# plt.show()
+	plt.close()
+	
+def getMinAndMaxFreq(data_sets):
+	min_freq = min([ d[0].cpu_freq for d in data_sets ])
+	max_freq = max([ d[0].cpu_freq for d in data_sets ])
+	return (min_freq, max_freq)
+	
+def plotDegradationGraphs(set_of_num_clients, data_sets, num_requests_per_client, plot_log=False):
+	fig, ax = plt.subplots()
+    
+	for data in data_sets:
+		# This assumes `cpu_freq` to be the same across all data elements
+		cpu_freq = data[0].cpu_freq
+		corePlotLatencyInfo(set_of_num_clients, ax, data, False, f"{cpu_freq} MHz")
+
+	ax.set(xlabel='Number of concurrent clients', ylabel='Latency (milliseconds)',
+	title=f'Average latency\nat {num_requests_per_client} requests per client')
+	
+	# Information on how to build custom scales
+	# https://stackoverflow.com/questions/31168051/creating-probability-frequency-axis-grid-irregularly-spaced-with-matplotlib/31170170#31170170
+	plt.legend(loc='upper left')
+
+	base_figure_path = "/home/lucas/Repos/go-interscity/go-grind/output/"
+	
+	min_freq, max_freq = getMinAndMaxFreq(data_sets)
+
+	fig.savefig(f"{base_figure_path}degradation_plot_up_to_{set_of_num_clients[-1]}_clients_{num_requests_per_client}_requests_per_client_{min_freq}_to_{max_freq}_MHz.png", dpi=200)
+
+	if (plot_log):
+		plt.yscale('log')
+		fig.savefig(f"{base_figure_path}degradation_plot_up_to_{set_of_num_clients[-1]}_clients_{num_requests_per_client}_requests_per_client_{min_freq}_to_{max_freq}_MHz_log.png", dpi=200)
 
 	plt.show()
 	plt.close()
@@ -210,26 +245,33 @@ def spawn_test(args):
 	num_requests = args.requests_per_client
 	skip_measurements = args.skip_measurements
 	num_tests = args.num_steps
+	num_freq_tests = args.num_freq_steps
 	min_freq = args.min_cpu_freq
 	max_freq = args.max_cpu_freq
 	
-	if (min_freq == max_freq):
-		set_frequency(min_freq)
-	
 	set_of_num_clients = get_set_of_num_clients(max_num_clients, num_tests)
-	latencyInfo = []
-	for num_clients in set_of_num_clients:
-		if (not skip_measurements):
-			core_spawn_test(num_clients, num_requests)
-		latencyInfo.append(process_log(num_clients, num_requests))
-		
-	plotLatencyInfo(set_of_num_clients, latencyInfo)
+	
+	# If `min_freq == max_freq`, then this is going to output `[max_freq]`
+	set_of_frequencies = get_set_of_frequencies(max_freq, min_freq, num_freq_tests)
+
+	latencyInfoSets = []
+	for freq in set_of_frequencies:
+		latencyInfo = []
+		set_frequency(freq)
+		for num_clients in set_of_num_clients:
+			if (not skip_measurements):
+				core_spawn_test(num_clients, num_requests)
+			latencyInfo.append(process_log(num_clients, num_requests, freq))
+		latencyInfoSets.append(latencyInfo)
+		# plotLatencyInfo(set_of_num_clients, latencyInfo)
+	plotDegradationGraphs(set_of_num_clients, latencyInfoSets, num_requests)
 
 # https://zetcode.com/python/argparse/
 argument_parser = argparse.ArgumentParser()
 
 argument_parser.add_argument('--num-clients', type=int, required=True)
 argument_parser.add_argument('--num-steps', type=int, default=10, required=False)
+argument_parser.add_argument('--num-freq-steps', type=int, default=3, required=False)
 argument_parser.add_argument('--requests-per-client', type=int, required=True)
 argument_parser.add_argument('--driver', dest='driver', choices=['requests', 'request'], help="Defines which test driver to use", default='requests')
 argument_parser.add_argument('--uuid', type=str, required=False)
