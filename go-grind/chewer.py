@@ -17,7 +17,7 @@ SERVER_PORT = 8888
 MONGO_PORT = 0
 
 class LatencyInfo:
-	def __init__(self, minimum, q10, med, average, q90, q95, std, cpu_freq):
+	def __init__(self, minimum, q10, med, average, q90, q95, std, cpu_freq, storage_type):
 		self.minimum = minimum
 		self.q10 = q10
 		self.med = med
@@ -26,6 +26,7 @@ class LatencyInfo:
 		self.q95 = q95
 		self.std = std
 		self.cpu_freq = cpu_freq
+		self.storage_type = storage_type
 	def __str__(self):
 		return f"{self.minimum}, {self.q10}, {self.med}, {self.average}, {self.q90}, {self.q95}, {self.std}, {self.cpu_freq}"
 	
@@ -44,7 +45,7 @@ def wait_until_server_is_up():
 	while (not test_server_is_up()):
 		time.sleep(0.3)
 
-def process_log(num_clients: int, num_requests: int, cpu_freq: int):
+def process_log(num_clients: int, num_requests: int, cpu_freq: int, storage_type: str):
 	raw_data = []
 	
 	base_log_path = "/home/lucas/Repos/go-interscity/resource-adaptor/"
@@ -83,7 +84,7 @@ def process_log(num_clients: int, num_requests: int, cpu_freq: int):
 	quantiles = np.quantile(raw_data, [0.1, 0.9, 0.95])
 	minimum= np.min(raw_data)
 
-	latencyInfo = LatencyInfo(minimum, quantiles[0], median, average, quantiles[1], quantiles[2], std, cpu_freq)
+	latencyInfo = LatencyInfo(minimum, quantiles[0], median, average, quantiles[1], quantiles[2], std, cpu_freq, storage_type)
 	print(latencyInfo)
 
 	return latencyInfo
@@ -221,7 +222,8 @@ def plotDegradationGraphs(set_of_num_clients, data_sets, num_requests_per_client
 	for data in data_sets:
 		# This assumes `cpu_freq` to be the same across all data elements
 		cpu_freq = data[0].cpu_freq
-		corePlotLatencyInfo(set_of_num_clients, ax, data, False, f"{cpu_freq} MHz")
+		storage_type = data[0].storage_type
+		corePlotLatencyInfo(set_of_num_clients, ax, data, False, f"{cpu_freq} MHz, {storage_type}")
 
 	ax.set(xlabel='Number of concurrent clients', ylabel='Latency (milliseconds)',
 	title=f'Average latency\nat {num_requests_per_client} requests per client')
@@ -242,6 +244,16 @@ def plotDegradationGraphs(set_of_num_clients, data_sets, num_requests_per_client
 
 	plt.show()
 	plt.close()
+    
+def set_global_mongo_port(storage_type):
+	print(f"[storage_type]: {storage_type}")
+
+	global MONGO_PORT
+	
+	if storage_type == "hdd":
+		MONGO_PORT = 37018
+	elif storage_type == "ssd":
+		MONGO_PORT = 37017
 	
 def spawn_test(args):
 	max_num_clients = args.num_clients
@@ -252,15 +264,12 @@ def spawn_test(args):
 	min_freq = args.min_cpu_freq
 	max_freq = args.max_cpu_freq
 	storage_type = args.storage_type
-	
-	print(f"[storage_type]: {storage_type}")
-
-	global MONGO_PORT
-	
-	if storage_type == "hdd":
-		MONGO_PORT = 37018
-	elif storage_type == "ssd":
-		MONGO_PORT = 37017
+	compare_storage = args.compare_storage
+    
+	if (compare_storage):
+		storage_set = ['hdd', 'ssd']
+	else:
+		storage_set = [ storage_type ]
 
 	set_of_num_clients = get_set_of_num_clients(max_num_clients, num_tests)
 	
@@ -268,15 +277,17 @@ def spawn_test(args):
 	set_of_frequencies = get_set_of_frequencies(max_freq, min_freq, num_freq_tests)
 
 	latencyInfoSets = []
-	for freq in set_of_frequencies:
-		latencyInfo = []
-		set_frequency(freq)
-		for num_clients in set_of_num_clients:
-			if (not skip_measurements):
-				core_spawn_test(num_clients, num_requests)
-			latencyInfo.append(process_log(num_clients, num_requests, freq))
-		latencyInfoSets.append(latencyInfo)
-		# plotLatencyInfo(set_of_num_clients, latencyInfo)
+	for storage in storage_set:
+		set_global_mongo_port(storage)
+		for freq in set_of_frequencies:
+			latencyInfo = []
+			set_frequency(freq)
+			for num_clients in set_of_num_clients:
+				if (not skip_measurements):
+					core_spawn_test(num_clients, num_requests)
+				latencyInfo.append(process_log(num_clients, num_requests, freq, storage))
+			latencyInfoSets.append(latencyInfo)
+			# plotLatencyInfo(set_of_num_clients, latencyInfo)
 	plotDegradationGraphs(set_of_num_clients, latencyInfoSets, num_requests)
 
 # https://zetcode.com/python/argparse/
@@ -291,10 +302,12 @@ argument_parser.add_argument('--min-cpu-freq', type=int, required=False, help="D
 argument_parser.add_argument('--max-cpu-freq', type=int, required=False, help="Defines maximum processor frequency to be tested", default=3400)
 argument_parser.add_argument('--storage-type', choices=['ssd', 'hdd'], help="Defines what kind of storage the server DB should use", default='ssd')
 
+
 # https://docs.python.org/3/howto/argparse.html#introducing-optional-arguments
 # The "store_true" action makes argparser automatically assign "True" to the related variable anytime
 # the optional argument is found, avoiding us to require the user to pass any value after setting the flag 
 argument_parser.add_argument('--skip-measurements', default=False, required=False, action="store_true")
+argument_parser.add_argument('--compare-storage', default=False, required=False, action="store_true")
 
 args = argument_parser.parse_args()
 print(args)
