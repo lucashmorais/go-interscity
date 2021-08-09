@@ -14,7 +14,8 @@ from matplotlib import pyplot as plt
 SERVER_BASE_ROUTE = 'http://localhost'
 SERVER_TEST_ROUTE = '/'
 SERVER_PORT = 8888
-MONGO_PORT = 0
+BASE_REPO_PATH = '/home/lucas/Repos/go-interscity/'
+MONGO_PORT = 37017
 
 class LatencyInfo:
 	def __init__(self, minimum, q10, med, average, q90, q95, std, cpu_freq, storage_type):
@@ -48,7 +49,7 @@ def wait_until_server_is_up():
 def process_log(num_clients: int, num_requests: int, cpu_freq: int, storage_type: str):
 	raw_data = []
 	
-	base_log_path = "/home/lucas/Repos/go-interscity/resource-adaptor/"
+	base_log_path = f"{BASE_REPO_PATH}resource-adaptor/"
 	
 	log_path = base_log_path + log_name(num_clients, num_requests)
 	file = open(log_path)
@@ -72,7 +73,7 @@ def process_log(num_clients: int, num_requests: int, cpu_freq: int, storage_type
 	# print("Average latency (milliseconds): %d" % np.average(raw_data))
 	# print("Latency standard deviation (milliseconds): %d" % np.std(raw_data))
 	
-	base_figure_path = "/home/lucas/Repos/go-interscity/go-grind/output/"
+	base_figure_path = f"{BASE_REPO_PATH}go-grind/output/"
 
 	# plt.savefig(f"{base_figure_path}{num_clients}_{num_requests}_{cpu_freq}MHz.svg", format="svg")
 	plt.savefig(f"{base_figure_path}{num_clients}_{num_requests}_{cpu_freq}MHz.png", format="png", dpi=200)
@@ -93,16 +94,16 @@ def log_name(num_clients, num_requests_per_client):
 	return f"{num_clients}_{num_requests_per_client}.log"
     
 def get_server_command(num_clients: int, num_requests: int):
-	base = f"cd /home/lucas/Repos/go-interscity/resource-adaptor/ && MONGO_PORT={MONGO_PORT} go run server.go > " 
+	base = f"cd {BASE_REPO_PATH}resource-adaptor/ && MONGO_PORT={MONGO_PORT} go run server.go > " 
 	command = base + f"{log_name(num_clients, num_requests)} 2>&1"
 	return command
 	
 def get_grinder_command(num_clients: int, num_requests: int):
-	command = f"cd /home/lucas/Repos/go-interscity/go-grind && go run grinder.go {num_clients} {num_requests}"
+	command = f"cd {BASE_REPO_PATH}go-grind && go run grinder.go {num_clients} {num_requests}"
 	return command
 
 def get_freq_set_command(target_frequency: int):
-	command = f"/home/lucas/Repos/go-interscity/go-grind/max_perf_custom_freq.sh {target_frequency}"
+	command = f"{BASE_REPO_PATH}go-grind/max_perf_custom_freq.sh {target_frequency}"
 	return command
 	
 def set_frequency(target_frequency: int):
@@ -200,7 +201,7 @@ def plotLatencyInfo(set_of_num_clients, data, plot_log=False):
 	# https://stackoverflow.com/questions/31168051/creating-probability-frequency-axis-grid-irregularly-spaced-with-matplotlib/31170170#31170170
 	plt.legend(loc='upper left')
 
-	base_figure_path = "/home/lucas/Repos/go-interscity/go-grind/output/"
+	base_figure_path = f"{BASE_REPO_PATH}go-grind/output/"
 
 	fig.savefig(f"{base_figure_path}degradation_plot_up_to_{set_of_num_clients[-1]}_clients_{cpu_freq}MHz.png", dpi=200)
 
@@ -232,7 +233,7 @@ def plotDegradationGraphs(set_of_num_clients, data_sets, num_requests_per_client
 	# https://stackoverflow.com/questions/31168051/creating-probability-frequency-axis-grid-irregularly-spaced-with-matplotlib/31170170#31170170
 	plt.legend(loc='upper left')
 
-	base_figure_path = "/home/lucas/Repos/go-interscity/go-grind/output/"
+	base_figure_path = f"{BASE_REPO_PATH}go-grind/output/"
 	
 	min_freq, max_freq = getMinAndMaxFreq(data_sets)
 
